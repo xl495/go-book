@@ -32,4 +32,28 @@ func SetupRoutes(app *fiber.App) {
 	product.Post("/", middleware.Protected(), handler.CreateProduct)
 	product.Delete("/:id", middleware.Protected(), handler.DeleteProduct)
 
+	//	 Category
+	category := api.Group("/category", middleware.Protected())
+
+	category.Get("/", handler.GetCategoryList)
+	category.Get("/:id", handler.GetCategory)
+	category.Post("/", handler.CreateCategory)
+	category.Patch("/:id", handler.UpdateCategory)
+	category.Delete("/:id", handler.DeleteCategory)
+
+	//	Book
+	book := api.Group("/book", middleware.Protected())
+	book.Get("/", handler.GetBookList)
+	book.Get("/:id", handler.GetBook)
+	book.Post("/", handler.CreateBook)
+	book.Patch("/:id", handler.UpdateBook)
+	book.Delete("/:id", handler.DeleteBook)
+
+	// 404
+	app.Use(func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"data":    nil,
+			"message": "没有找到该路由",
+		})
+	})
 }

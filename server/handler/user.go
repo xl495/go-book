@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"api-fiber-gorm/common"
+	"github.com/go-playground/validator/v10"
 	"strconv"
 
 	"api-fiber-gorm/database"
@@ -41,41 +43,48 @@ func validUser(id string, p string) bool {
 	return true
 }
 
-// GetUser get a user
+// GetUser 获取用户
 func GetUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 	db := database.DB
 	var user model.User
-	db.Find(&user, id)
+	db.Omit("password").Find(&user, id)
 	if user.Username == "" {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "No user found with ID", "data": nil})
+		return common.Response(c, 404, "找不到该ID的用户", nil)
 	}
-	return c.JSON(fiber.Map{"status": "success", "message": "User found", "data": user})
+
+	return common.Response(c, 200, "成功", fiber.Map{"data": user})
 }
 
-// CreateUser new user
+// CreateUser 创建新用户
 func CreateUser(c *fiber.Ctx) error {
 	type NewUser struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
 	}
 
-	db := database.DB
-	user := new(model.User)
-	if err := c.BodyParser(user); err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Review your input", "data": err})
+	validate := validator.New()
 
+	db := database.DB
+
+	user := new(model.User)
+
+	if err := c.BodyParser(user); err != nil {
+		return common.Response(c, fiber.StatusBadRequest, "错误", err)
+	}
+
+	if err := validate.Struct(user); err != nil {
+		return common.Response(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
 
 	hash, err := hashPassword(user.Password)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Couldn't hash password", "data": err})
-
+		return common.Response(c, 500, "无法加密密码", err)
 	}
 
 	user.Password = hash
 	if err := db.Create(&user).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Couldn't create user", "data": err})
+		return common.Response(c, 500, "无法创建用户", err)
 	}
 
 	newUser := NewUser{
@@ -83,23 +92,23 @@ func CreateUser(c *fiber.Ctx) error {
 		Username: user.Username,
 	}
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Created user", "data": newUser})
+	return common.Response(c, 200, "成功", fiber.Map{"data": newUser})
 }
 
-// UpdateUser update user
+// UpdateUser 更新用户
 func UpdateUser(c *fiber.Ctx) error {
 	type UpdateUserInput struct {
 		Names string `json:"names"`
 	}
 	var uui UpdateUserInput
 	if err := c.BodyParser(&uui); err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Review your input", "data": err})
+		return common.Response(c, 500, "请检查您的输入", err)
 	}
 	id := c.Params("id")
 	token := c.Locals("user").(*jwt.Token)
 
 	if !validToken(token, id) {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Invalid token id", "data": nil})
+		return common.Response(c, 500, "无效的令牌ID", nil)
 	}
 
 	db := database.DB
@@ -109,29 +118,27 @@ func UpdateUser(c *fiber.Ctx) error {
 	user.Names = uui.Names
 	db.Save(&user)
 
-	return c.JSON(fiber.Map{"status": "success", "message": "User successfully updated", "data": user})
+	return common.Response(c, 200, "用户更新成功", fiber.Map{"data": user})
 }
 
-// DeleteUser delete user
+// DeleteUser 删除用户
 func DeleteUser(c *fiber.Ctx) error {
 	type PasswordInput struct {
 		Password string `json:"password"`
 	}
 	var pi PasswordInput
 	if err := c.BodyParser(&pi); err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Review your input", "data": err})
+		return common.Response(c, 500, "请检查您的输入", err)
 	}
 	id := c.Params("id")
 	token := c.Locals("user").(*jwt.Token)
 
 	if !validToken(token, id) {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Invalid token id", "data": nil})
-
+		return common.Response(c, 500, "无效的令牌ID", nil)
 	}
 
 	if !validUser(id, pi.Password) {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Not valid user", "data": nil})
-
+		return common.Response(c, 500, "无效的用户", nil)
 	}
 
 	db := database.DB
@@ -140,5 +147,5 @@ func DeleteUser(c *fiber.Ctx) error {
 	db.First(&user, id)
 
 	db.Delete(&user)
-	return c.JSON(fiber.Map{"status": "success", "message": "User successfully deleted", "data": nil})
+	return common.Response(c, 200, "用户删除成功", nil)
 }
