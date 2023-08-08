@@ -22,6 +22,7 @@ import {
   IconDashboard,
   IconInteraction,
   IconTag,
+  IconLoading,
 } from '@arco-design/web-react/icon';
 import { useSelector, useDispatch } from 'react-redux';
 import { GlobalState } from '@/store';
@@ -38,7 +39,7 @@ import { generatePermission } from '@/routes';
 
 function Navbar({ show }: { show: boolean }) {
   const t = useLocale();
-  const userInfo = useSelector((state: GlobalState) => state.userInfo);
+  const { userInfo, userLoading } = useSelector((state: GlobalState) => state);
   const dispatch = useDispatch();
 
   const [_, setUserStatus] = useStorage('userStatus');
@@ -125,6 +126,10 @@ function Navbar({ show }: { show: boolean }) {
           <IconDashboard className={styles['dropdown-icon']} />
           {t['menu.dashboard.workplace']}
         </Menu.Item>
+        <Menu.Item key="card list">
+          <IconInteraction className={styles['dropdown-icon']} />
+          {t['menu.list.cardList']}
+        </Menu.Item>
       </Menu.SubMenu>
 
       <Divider style={{ margin: '4px 0' }} />
@@ -193,9 +198,13 @@ function Navbar({ show }: { show: boolean }) {
         <Settings />
         {userInfo && (
           <li>
-            <Dropdown droplist={droplist} position="br">
+            <Dropdown droplist={droplist} position="br" disabled={userLoading}>
               <Avatar size={32} style={{ cursor: 'pointer' }}>
-                <img alt="avatar" src={userInfo.avatar} />
+                {userLoading ? (
+                  <IconLoading />
+                ) : (
+                  <img alt="avatar" src={userInfo.avatar} />
+                )}
               </Avatar>
             </Dropdown>
           </li>
