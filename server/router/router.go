@@ -3,6 +3,7 @@ package router
 import (
 	"api-fiber-gorm/handler"
 	"api-fiber-gorm/middleware"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -42,7 +43,10 @@ func SetupRoutes(app *fiber.App) {
 	category.Delete("/:id", handler.DeleteCategory)
 
 	//	Book
-	book := api.Group("/book", middleware.Protected())
+	book := api.Group("/book", func(ctx *fiber.Ctx) error {
+		fmt.Println("middleware")
+		return ctx.Next()
+	}, middleware.Protected())
 	book.Get("/", handler.GetBookList)
 	book.Get("/:id", handler.GetBook)
 	book.Post("/", handler.CreateBook)
